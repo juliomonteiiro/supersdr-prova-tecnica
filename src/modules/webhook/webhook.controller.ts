@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AppError } from '../../shared/errors';
 import { WebhookService } from './webhook.service';
 import { logger } from '../../infra/logger/logger';
+import { assertZApiWebhookAuthorized } from './zapi-webhook.guard';
 
 type Params = {
     provider: string;
@@ -34,6 +35,10 @@ export class WebhookController {
      */
     async receive(req: Request<Params>, res: Response) {
         try {
+            if (req.params.provider === 'zapi') {
+                assertZApiWebhookAuthorized(req);
+            }
+
             const result = await this.service.handle(
                 req.params.provider,
                 req.body

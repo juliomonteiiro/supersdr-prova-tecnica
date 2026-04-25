@@ -3,16 +3,19 @@ import { NormalizedMessage } from '../../domain/normalized-message';
 import { PayloadValidationError } from '../../shared/errors';
 import { WebhookAdapter } from '../webhook-adapter';
 
-const zApiWebhookSchema = z.object({
-  messageId: z.string().min(1),
-  phone: z.string().min(1),
-  momment: z.number().optional(),
-  text: z
-    .object({
-      message: z.string().min(1)
-    })
-    .optional()
-});
+const zApiWebhookSchema = z
+  .object({
+    instanceId: z.string().optional(),
+    messageId: z.string().min(1),
+    phone: z.string().min(1),
+    momment: z.number().optional(),
+    text: z
+      .object({
+        message: z.string().min(1)
+      })
+      .optional()
+  })
+  .passthrough();
 
 export class ZApiAdapter implements WebhookAdapter {
   parse(payload: unknown): NormalizedMessage {
