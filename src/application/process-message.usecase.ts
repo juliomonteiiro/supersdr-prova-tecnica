@@ -1,8 +1,9 @@
+import { NormalizedMessage } from '../domain/normalized-message';
 import { prisma } from '../infra/db/prisma.service';
 import { logger } from '../infra/logger/logger';
 
 export class ProcessMessageUseCase {
-  async execute(message: any) {
+  async execute(message: NormalizedMessage): Promise<void> {
 
     const exists = await prisma.message.findUnique({
       where: { externalId: message.id }
@@ -21,7 +22,8 @@ export class ProcessMessageUseCase {
         externalId: message.id,
         provider: message.provider,
         from: message.from,
-        content: message.content
+        content: message.content,
+        createdAt: message.timestamp
       }
     });
 

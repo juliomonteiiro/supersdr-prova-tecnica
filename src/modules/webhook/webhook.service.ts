@@ -1,3 +1,4 @@
+import { NormalizedMessage } from '../../domain/normalized-message';
 import { AdapterFactory } from '../../providers/adapter.factory';
 import { ProcessMessageUseCase } from '../../application/process-message.usecase';
 import { logger } from '../../infra/logger/logger';
@@ -5,7 +6,7 @@ import { logger } from '../../infra/logger/logger';
 export class WebhookService {
   private useCase = new ProcessMessageUseCase();
 
-  async handle(provider: string, payload: any) {
+  async handle(provider: string, payload: unknown): Promise<NormalizedMessage> {
 
     logger.info({ provider }, 'Webhook received');
 
