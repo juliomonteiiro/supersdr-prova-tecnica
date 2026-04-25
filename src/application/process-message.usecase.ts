@@ -28,7 +28,6 @@ export class ProcessMessageUseCase {
       }
     });
 
-    // Non-blocking: webhook flow is not delayed by LLM classification.
     intentClassificationService.enqueue(created.id, message.content);
 
     logger.info(

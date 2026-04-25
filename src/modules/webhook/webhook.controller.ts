@@ -11,7 +11,6 @@ type Params = {
 export class WebhookController {
     private service = new WebhookService();
 
-    /** Documentação OpenAPI: `src/openapi/webhook.openapi.ts` e `/docs`. */
     async receive(req: Request<Params>, res: Response) {
         try {
             if (req.params.provider.trim().toLowerCase() === 'zapi') {

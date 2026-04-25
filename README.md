@@ -146,7 +146,7 @@ npm run dev
 
 - HTTP: `http://localhost:3000` (ou a porta definida no `.env`)
 - Webhook: `POST /webhook/:provider` com `provider` em `zapi`, `meta` ou `evolution`
-- Swagger UI: `/docs` — **facilitar testes manuais** (“Try it out”). Os exemplos de **resposta** (200, 400, …) são os mesmos objetos que o sistema serializa (gerados via adapters e erros reais, sem JSON “só para doc”). Textos de descrição sem markdown agressivo na UI. O header `Client-Token` da Z-API não aparece aqui (ver seção Z-API).
+- Swagger UI: `/docs` — **facilitar testes manuais** (“Try it out”). Os exemplos de **resposta** (200, 400, …) são os mesmos objetos que o sistema serializa (gerados via adapters e erros reais, sem JSON “só para doc”). Textos de descrição sem markdown agressivo na UI. O header de autenticação do webhook da Z-API não aparece aqui (ver seção Z-API).
 
 
 ## Z-API (webhook real)
@@ -182,11 +182,12 @@ SELECT "createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo' AS create
 
 Se no futuro quiser padronizar tudo com fuso explícito no Postgres, a evolução natural é migrar para `timestamptz` e alinhar `TimeZone` da sessão ou da instância.
 
-**Token (`Client-Token`, opcional mas recomendado em produção)**
+**Token do webhook (opcional, recomendado em produção)**
 
-1. No painel da Z-API, copie o token de segurança da conta ([documentação](https://developer.z-api.io/security/client-token)).
-2. No `.env`, defina o mesmo valor em `ZAPI_CLIENT_TOKEN`. Com isso, todo `POST /webhook/zapi` precisa do header `Client-Token: <mesmo valor>`.
-3. Se **não** definir `ZAPI_CLIENT_TOKEN`, o endpoint aceita o webhook sem checagem de header (útil para Postman / dev local).
+1. Em integração real, os callbacks da Z-API podem chegar com o header `z-api-token` (token da instância).
+2. No `.env`, defina `ZAPI_INSTANCE_TOKEN` com o token da instância para exigir validação no `POST /webhook/zapi`.
+3. Compatibilidade: o sistema também aceita `ZAPI_CLIENT_TOKEN` + header `Client-Token` (token de segurança da conta, [documentação](https://developer.z-api.io/security/client-token)).
+4. Se **não** definir nenhum token (`ZAPI_INSTANCE_TOKEN` / `ZAPI_CLIENT_TOKEN`), o endpoint aceita webhook sem checagem de header (útil para dev local).
 
 Payloads reais podem trazer campos extras (por exemplo `instanceId`); o adapter aceita campos adicionais e normaliza `messageId`, `phone`, `text` e `momment` quando presentes.
 

@@ -40,7 +40,7 @@ export const realErrorExamples = {
     AdapterFactory.getAdapter('telegram');
   }),
   zapiUnauthorized: {
-    error: 'Invalid or missing Client-Token for Z-API webhook',
+    error: 'Invalid or missing token for Z-API webhook',
     code: 'ZAPI_WEBHOOK_UNAUTHORIZED'
   } as const,
   internal: {

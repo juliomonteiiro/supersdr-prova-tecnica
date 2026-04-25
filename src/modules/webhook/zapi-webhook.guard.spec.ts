@@ -3,7 +3,17 @@ import type { Request } from 'express';
 import { assertZApiWebhookAuthorized } from './zapi-webhook.guard';
 
 vi.mock('../../config/env', () => ({
-  env: { ZAPI_CLIENT_TOKEN: undefined as string | undefined }
+  env: {
+    LOG_LEVEL: 'silent',
+    ZAPI_INSTANCE_TOKEN: undefined as string | undefined,
+    ZAPI_CLIENT_TOKEN: undefined as string | undefined
+  }
+}));
+
+vi.mock('../../infra/logger/logger', () => ({
+  logger: {
+    warn: vi.fn()
+  }
 }));
 
 import { env } from '../../config/env';
@@ -23,21 +33,33 @@ function mockRequest(headers: Record<string, string | undefined>): Request {
 
 describe('assertZApiWebhookAuthorized', () => {
   beforeEach(() => {
+    vi.mocked(env).ZAPI_INSTANCE_TOKEN = undefined;
     vi.mocked(env).ZAPI_CLIENT_TOKEN = undefined;
   });
 
   afterEach(() => {
+    vi.mocked(env).ZAPI_INSTANCE_TOKEN = undefined;
     vi.mocked(env).ZAPI_CLIENT_TOKEN = undefined;
   });
 
-  it('allows any request when ZAPI_CLIENT_TOKEN is not configured', () => {
+  it('allows any request when no Z-API token is configured', () => {
+    vi.mocked(env).ZAPI_INSTANCE_TOKEN = undefined;
     vi.mocked(env).ZAPI_CLIENT_TOKEN = undefined;
     expect(() =>
       assertZApiWebhookAuthorized(mockRequest({}))
     ).not.toThrow();
   });
 
-  it('allows request when Client-Token matches', () => {
+  it('allows request when z-api-token matches instance token', () => {
+    vi.mocked(env).ZAPI_INSTANCE_TOKEN = 'instance-token';
+    expect(() =>
+      assertZApiWebhookAuthorized(
+        mockRequest({ 'z-api-token': 'instance-token' })
+      )
+    ).not.toThrow();
+  });
+
+  it('allows request when Client-Token matches legacy token config', () => {
     vi.mocked(env).ZAPI_CLIENT_TOKEN = 'secret-from-panel';
     expect(() =>
       assertZApiWebhookAuthorized(
@@ -47,16 +69,16 @@ describe('assertZApiWebhookAuthorized', () => {
   });
 
   it('rejects when token is configured but header is missing', () => {
-    vi.mocked(env).ZAPI_CLIENT_TOKEN = 'secret-from-panel';
+    vi.mocked(env).ZAPI_INSTANCE_TOKEN = 'instance-token';
     expect(() => assertZApiWebhookAuthorized(mockRequest({}))).toThrow(
-      'Invalid or missing Client-Token'
+      'Invalid or missing token for Z-API webhook'
     );
   });
 
   it('rejects when header does not match', () => {
-    vi.mocked(env).ZAPI_CLIENT_TOKEN = 'secret-from-panel';
+    vi.mocked(env).ZAPI_INSTANCE_TOKEN = 'instance-token';
     expect(() =>
-      assertZApiWebhookAuthorized(mockRequest({ 'Client-Token': 'wrong' }))
-    ).toThrow('Invalid or missing Client-Token');
+      assertZApiWebhookAuthorized(mockRequest({ 'z-api-token': 'wrong' }))
+    ).toThrow('Invalid or missing token for Z-API webhook');
   });
 });
