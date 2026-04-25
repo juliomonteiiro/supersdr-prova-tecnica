@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { AppError } from '../../shared/errors';
 import { WebhookService } from './webhook.service';
 import { logger } from '../../infra/logger/logger';
 
@@ -42,8 +43,16 @@ export class WebhookController {
         } catch (error: any) {
             logger.error({ err: error }, 'Failed to process webhook');
 
-            return res.status(400).json({
-                error: error.message
+            if (error instanceof AppError) {
+                return res.status(error.statusCode).json({
+                    error: error.message,
+                    code: error.code
+                });
+            }
+
+            return res.status(500).json({
+                error: 'Internal processing error',
+                code: 'INTERNAL_ERROR'
             });
         }
     }
