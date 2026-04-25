@@ -6,7 +6,7 @@ export const swaggerSpec = swaggerJsdoc({
     info: {
       title: 'SuperSDR Webhook API',
       version: '1.0.0',
-      description: 'Sistema de normalização de webhooks'
+      description: 'Webhook normalization system'
     }
   },
   apis: ['./src/modules/**/*.ts']

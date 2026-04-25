@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { WebhookService } from './webhook.service';
+import { logger } from '../../infra/logger/logger';
 
 type Params = {
     provider: string;
@@ -12,14 +13,14 @@ export class WebhookController {
      * @swagger
      * /webhook/{provider}:
      *   post:
-     *     summary: Recebe webhook de um provedor
+     *     summary: Receive webhook from a provider
      *     parameters:
      *       - in: path
      *         name: provider
      *         required: true
      *         schema:
      *           type: string
-     *         description: Nome do provedor (zapi, meta, etc)
+     *         description: Provider name (zapi, meta, etc)
      *     requestBody:
      *       required: true
      *       content:
@@ -28,7 +29,7 @@ export class WebhookController {
      *             type: object
      *     responses:
      *       200:
-     *         description: Webhook processado
+     *         description: Webhook processed
      */
     async receive(req: Request<Params>, res: Response) {
         try {
@@ -39,6 +40,8 @@ export class WebhookController {
 
             return res.json(result);
         } catch (error: any) {
+            logger.error({ err: error }, 'Failed to process webhook');
+
             return res.status(400).json({
                 error: error.message
             });
