@@ -6,7 +6,7 @@ Serviço de normalização de webhooks para o SuperSDR: recebe payloads específ
 
 | Camada | Responsabilidade |
 |--------|------------------|
-| **HTTP** (`src/modules/webhook`) | Rota `POST /webhook/:provider`, Swagger em `/docs`, validação opcional Z-API (`Client-Token` vs `ZAPI_CLIENT_TOKEN` — ver seção Z-API). |
+| **HTTP** (`src/modules/webhook`) | Rota `POST /webhook/:provider`. OpenAPI em `src/openapi/`, `/docs` (focado em testes com body; segurança Z-API via env + header na integração real — ver seção Z-API). |
 | **Aplicação** (`WebhookService`) | Orquestração: log, factory de adapter, parse, caso de uso de persistência. |
 | **Domínio** (`NormalizedMessage`, erros) | Contrato único da mensagem recebida; erros de negócio com código HTTP. |
 | **Provedores** (`adapters`, `AdapterFactory`) | Cada adapter valida com Zod e mapeia para `NormalizedMessage`. |
@@ -139,7 +139,8 @@ npm run dev
 
 - HTTP: `http://localhost:3000` (ou a porta definida no `.env`)
 - Webhook: `POST /webhook/:provider` com `provider` em `zapi`, `meta` ou `evolution`
-- Swagger: `/docs` — útil para testes rápidos (“Try it out”) e inspeção básica do endpoint; detalhes de contrato e payloads estão nos adapters, fixtures e README.
+- Swagger UI: `/docs` — **facilitar testes manuais** (“Try it out”). Os exemplos de **resposta** (200, 400, …) são os mesmos objetos que o sistema serializa (gerados via adapters e erros reais, sem JSON “só para doc”). Textos de descrição sem markdown agressivo na UI. O header `Client-Token` da Z-API não aparece aqui (ver seção Z-API).
+
 
 ## Z-API (webhook real)
 
