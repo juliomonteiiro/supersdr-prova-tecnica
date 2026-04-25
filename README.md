@@ -76,7 +76,7 @@ Os JSON de referência da prova (seção 5) estão em `test/fixtures/` (`meta-cl
 - [x] Parte 2.2 — integração LLM funcional (classificação de intenção + fallback local).
 - [x] Diferencial — testes unitários e de contrato com payloads de referência.
 - [x] Vídeo de apresentação (até 10 min): [Google Drive](https://drive.google.com/file/d/1vIbiuasjzut207JBy8FPUIHGgNpPXcQD/view?usp=sharing).
-- [ ] Repositório público no GitHub com commits claros (responsabilidade do candidato).
+- [x] Repositório público no GitHub com commits claros.
 
 ## Uso de IA
 
