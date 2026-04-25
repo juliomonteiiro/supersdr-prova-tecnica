@@ -6,7 +6,9 @@ import { WebhookAdapter } from './webhook-adapter';
 
 export class AdapterFactory {
   static getAdapter(provider: string): WebhookAdapter {
-    switch (provider) {
+    const key = provider.trim().toLowerCase();
+
+    switch (key) {
       case 'zapi':
         return new ZApiAdapter();
       case 'meta':
@@ -14,7 +16,7 @@ export class AdapterFactory {
       case 'evolution':
         return new EvolutionAdapter();
       default:
-        throw new ProviderNotSupportedError(provider);
+        throw new ProviderNotSupportedError(key);
     }
   }
 }

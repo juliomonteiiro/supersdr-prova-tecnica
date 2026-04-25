@@ -2,6 +2,85 @@
 
 Serviço de normalização de webhooks para o SuperSDR: recebe payloads específicos de cada provedor, valida, converte para um formato interno único e persiste mensagens com tratamento idempotente.
 
+## Arquitetura (camadas)
+
+| Camada | Responsabilidade |
+|--------|------------------|
+| **HTTP** (`src/modules/webhook`) | Rota `POST /webhook/:provider`, Swagger em `/docs`, validação opcional Z-API (`Client-Token` vs `ZAPI_CLIENT_TOKEN` — ver seção Z-API). |
+| **Aplicação** (`WebhookService`) | Orquestração: log, factory de adapter, parse, caso de uso de persistência. |
+| **Domínio** (`NormalizedMessage`, erros) | Contrato único da mensagem recebida; erros de negócio com código HTTP. |
+| **Provedores** (`adapters`, `AdapterFactory`) | Cada adapter valida com Zod e mapeia para `NormalizedMessage`. |
+| **Caso de uso** (`ProcessMessageUseCase`) | Idempotência por `externalId` + gravação via Prisma. |
+| **Infra** | Prisma + PostgreSQL, Pino, variáveis de ambiente validadas com Zod. |
+
+Fluxo resumido: **webhook → controller → service → `AdapterFactory.getAdapter` → `adapter.parse` → `ProcessMessageUseCase.execute` → tabela `Message`.**
+
+```mermaid
+flowchart LR
+  A[POST /webhook/:provider] --> B[Controller]
+  B --> C[WebhookService]
+  C --> D[AdapterFactory]
+  D --> E[Adapter específico]
+  E --> F[NormalizedMessage]
+  F --> G[ProcessMessageUseCase]
+  G --> H[(PostgreSQL Message)]
+```
+
+## Pattern e justificativa
+
+**Adapter + Factory (GoF):** cada provedor tem um *adapter* que conhece apenas o formato daquele webhook; a *factory* escolhe o adapter pelo segmento da URL (`:provider`), com chave **normalizada** (`trim` + `toLowerCase`) para evitar divergência entre painéis e Postman. O problema de múltiplos formatos de entrada fica isolado nos adapters; o restante do sistema só enxerga `NormalizedMessage`.
+
+## Extensibilidade (novo provedor)
+
+1. Criar `src/providers/adapters/<nome>.adapter.ts` implementando `WebhookAdapter` + schema Zod do payload.
+2. Registrar em `AdapterFactory` um novo `case '<nome>'`.
+3. (Recomendado) Adicionar fixture em `test/fixtures/` e um teste em `reference-payload.contract.spec.ts` ou spec dedicado.
+4. Não é necessário alterar controller nem o caso de uso de persistência, desde que o adapter produza `NormalizedMessage`.
+
+## Tratamento de erros
+
+| Cenário | Comportamento |
+|---------|----------------|
+| Webhook malformado | `PayloadValidationError` → HTTP 400, código `INVALID_PAYLOAD`. |
+| Provedor desconhecido | `ProviderNotSupportedError` → HTTP 400, `PROVIDER_NOT_SUPPORTED`. |
+| Falha no processamento | `AppError` com status explícito; demais erros → HTTP 500, `INTERNAL_ERROR` (log com Pino). |
+| Z-API com token configurado e header inválido | `AppError` 401, `ZAPI_WEBHOOK_UNAUTHORIZED`. |
+
+## Banco de dados (modelo)
+
+Modelo `Message` no Prisma: `externalId` único (idempotência), `provider`, `from`, `content`, `createdAt`. Migrations versionadas em `prisma/migrations` (detalhes de comandos na seção abaixo).
+
+## Integração com LLM (proposta, parte 2.2)
+
+Após persistir a mensagem normalizada, um passo assíncrono (fila ou job) poderia chamar a API da OpenAI ou Anthropic com um prompt de sistema fixo para **classificar intenção** (ex.: `lead`, `suporte`, `spam`) e gravar o rótulo em nova coluna ou tabela `MessageIntent`. Para **resposta automática**, o mesmo fluxo poderia gerar texto e devolver ao canal via API do provedor — fora do escopo mínimo deste repositório, mas o desenho encaixa após `ProcessMessageUseCase` sem mudar contratos dos adapters.
+
+## Payloads de referência do enunciado (seção 5)
+
+Os JSON de referência da prova (seção 5) estão em `test/fixtures/` (`meta-cloud-reference.json`, `evolution-reference.json`, `zapi-reference.json`). O arquivo `src/providers/adapters/reference-payload.contract.spec.ts` garante que os três adapters produzem o mesmo texto normalizado **«Olá, gostaria de saber mais sobre o produto»** e os mesmos identificadores esperados — útil para regressão e para demonstrar aderência ao enunciado.
+
+## Funcionalidades entregues (checklist)
+
+- [x] Parte 1.1 — descrição de camadas e comunicação (este README + código).
+- [x] Parte 1.2 — TypeScript funcional, Nest não obrigatório; Express; ≥2 provedores (**Meta, Evolution, Z-API**).
+- [x] Parte 1.3 — pattern documentado.
+- [x] Parte 1.4 — extensibilidade documentada + ponto único de registro na factory.
+- [x] Parte 1.5 — erros mapeados no controller.
+- [x] Parte 2.1 — PostgreSQL + Prisma + migrations.
+- [x] Parte 2.2 — integração LLM descrita (acima).
+- [x] Diferencial — testes unitários e de contrato com payloads de referência.
+- [ ] Vídeo de apresentação (até 10 min) — link a incluir pelo candidato antes do envio.
+- [ ] Repositório público no GitHub com commits claros (responsabilidade do candidato).
+
+## Uso de IA
+
+Ferramentas de IA (por exemplo Cursor) foram usadas para acelerar boilerplate, revisão de tipos e alinhamento com o enunciado; o código foi revisado manualmente, com testes automatizados para validar comportamento.
+
+## Assunções explícitas
+
+- Um request de webhook representa **uma** mensagem de texto relevante (exemplos da prova); payloads com múltiplas mensagens usam a primeira entrada compatível no adapter Meta.
+- Timestamps: Meta em segundos (string), Evolution em segundos (número), Z-API `momment` em milissegundos quando presente.
+- Provedor na URL é tratado de forma **case-insensitive**.
+
 ## Requisitos
 
 - Node.js 20+
@@ -60,7 +139,7 @@ npm run dev
 
 - HTTP: `http://localhost:3000` (ou a porta definida no `.env`)
 - Webhook: `POST /webhook/:provider` com `provider` em `zapi`, `meta` ou `evolution`
-- Swagger: `/docs`
+- Swagger: `/docs` — útil para testes rápidos (“Try it out”) e inspeção básica do endpoint; detalhes de contrato e payloads estão nos adapters, fixtures e README.
 
 ## Z-API (webhook real)
 
