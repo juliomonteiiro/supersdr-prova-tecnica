@@ -1,4 +1,4 @@
-export type SupportedProvider = 'zapi' | 'meta';
+export type SupportedProvider = 'zapi' | 'meta' | 'evolution';
 
 export interface NormalizedMessage {
   id: string;

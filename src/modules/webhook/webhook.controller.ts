@@ -21,7 +21,7 @@ export class WebhookController {
      *         required: true
      *         schema:
      *           type: string
-     *         description: Provider name (zapi, meta, etc)
+     *         description: Provider name (zapi, meta, evolution, etc)
      *     requestBody:
      *       required: true
      *       content:

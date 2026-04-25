@@ -59,7 +59,7 @@ npm run dev
 ```
 
 - HTTP: `http://localhost:3000` (ou a porta definida no `.env`)
-- Webhook: `POST /webhook/:provider` com `provider` em `zapi` ou `meta`
+- Webhook: `POST /webhook/:provider` com `provider` em `zapi`, `meta` ou `evolution`
 - Swagger: `/docs`
 
 ## Testes
