@@ -1,6 +1,7 @@
 import { NormalizedMessage } from '../domain/normalized-message';
 import { prisma } from '../infra/db/prisma.service';
 import { logger } from '../infra/logger/logger';
+import { intentClassificationService } from './llm/intent-classification.service';
 
 export class ProcessMessageUseCase {
   async execute(message: NormalizedMessage): Promise<void> {
@@ -17,7 +18,7 @@ export class ProcessMessageUseCase {
       return;
     }
 
-    await prisma.message.create({
+    const created = await prisma.message.create({
       data: {
         externalId: message.id,
         provider: message.provider,
@@ -26,6 +27,9 @@ export class ProcessMessageUseCase {
         createdAt: message.timestamp
       }
     });
+
+    // Non-blocking: webhook flow is not delayed by LLM classification.
+    intentClassificationService.enqueue(created.id, message.content);
 
     logger.info(
       { messageId: message.id },

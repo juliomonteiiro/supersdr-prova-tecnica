@@ -4,6 +4,7 @@ import { ProcessMessageUseCase } from './process-message.usecase';
 const mocks = vi.hoisted(() => ({
   findUniqueMock: vi.fn(),
   createMock: vi.fn(),
+  enqueueMock: vi.fn(),
   warnMock: vi.fn(),
   infoMock: vi.fn()
 }));
@@ -24,6 +25,12 @@ vi.mock('../infra/logger/logger', () => ({
   }
 }));
 
+vi.mock('./llm/intent-classification.service', () => ({
+  intentClassificationService: {
+    enqueue: mocks.enqueueMock
+  }
+}));
+
 describe('ProcessMessageUseCase', () => {
   const useCase = new ProcessMessageUseCase();
   const message = {
@@ -40,7 +47,7 @@ describe('ProcessMessageUseCase', () => {
 
   it('saves message when it does not exist', async () => {
     mocks.findUniqueMock.mockResolvedValue(null);
-    mocks.createMock.mockResolvedValue({});
+    mocks.createMock.mockResolvedValue({ id: 'db-message-id' });
 
     await useCase.execute(message);
 
@@ -57,6 +64,7 @@ describe('ProcessMessageUseCase', () => {
       }
     });
     expect(mocks.infoMock).toHaveBeenCalled();
+    expect(mocks.enqueueMock).toHaveBeenCalledWith('db-message-id', message.content);
   });
 
   it('does not save duplicate message', async () => {
@@ -65,6 +73,7 @@ describe('ProcessMessageUseCase', () => {
     await useCase.execute(message);
 
     expect(mocks.createMock).not.toHaveBeenCalled();
+    expect(mocks.enqueueMock).not.toHaveBeenCalled();
     expect(mocks.warnMock).toHaveBeenCalled();
   });
 });

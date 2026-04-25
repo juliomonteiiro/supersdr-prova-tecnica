@@ -7,7 +7,7 @@ Serviço de normalização de webhooks para o SuperSDR: recebe payloads específ
 | Camada | Responsabilidade |
 |--------|------------------|
 | **HTTP** (`src/modules/webhook`) | Rota `POST /webhook/:provider`. OpenAPI em `src/openapi/`, `/docs` (focado em testes com body; segurança Z-API via env + header na integração real — ver seção Z-API). |
-| **Aplicação** (`WebhookService`) | Orquestração: log, factory de adapter, parse, caso de uso de persistência. |
+| **Aplicação** (`WebhookService`) | Orquestração: log, factory de adapter, parse, caso de uso de persistência e classificação de intenção assíncrona. |
 | **Domínio** (`NormalizedMessage`, erros) | Contrato único da mensagem recebida; erros de negócio com código HTTP. |
 | **Provedores** (`adapters`, `AdapterFactory`) | Cada adapter valida com Zod e mapeia para `NormalizedMessage`. |
 | **Caso de uso** (`ProcessMessageUseCase`) | Idempotência por `externalId` + gravação via Prisma. |
@@ -48,11 +48,18 @@ flowchart LR
 
 ## Banco de dados (modelo)
 
-Modelo `Message` no Prisma: `externalId` único (idempotência), `provider`, `from`, `content`, `createdAt`. Migrations versionadas em `prisma/migrations` (detalhes de comandos na seção abaixo).
+Modelo `Message` no Prisma: `externalId` único (idempotência), `provider`, `from`, `content`, `createdAt`.
+Modelo `MessageIntent` (1:1 com `Message`): `intent`, `confidence`, `provider`, `model`, `reason`, `raw`, `createdAt`, `updatedAt`.
+Migrations versionadas em `prisma/migrations` (detalhes de comandos na seção abaixo).
 
-## Integração com LLM (proposta, parte 2.2)
+## Integração com LLM (implementada, parte 2.2)
 
-Após persistir a mensagem normalizada, um passo assíncrono (fila ou job) poderia chamar a API da OpenAI ou Anthropic com um prompt de sistema fixo para **classificar intenção** (ex.: `lead`, `suporte`, `spam`) e gravar o rótulo em nova coluna ou tabela `MessageIntent`. Para **resposta automática**, o mesmo fluxo poderia gerar texto e devolver ao canal via API do provedor — fora do escopo mínimo deste repositório, mas o desenho encaixa após `ProcessMessageUseCase` sem mudar contratos dos adapters.
+Após persistir a mensagem normalizada, a classificação de intenção é acionada de forma assíncrona em `IntentClassificationService`:
+
+- Se `OPENAI_API_KEY` estiver definido, usa `OpenAIIntentClassifier` (modelo configurável por `OPENAI_MODEL`).
+- Se não estiver definido, aplica fallback local `KeywordIntentClassifier` (sem depender de API externa).
+- O resultado é gravado com upsert na tabela `MessageIntent`.
+- Falhas de LLM não quebram o webhook: o endpoint continua respondendo normalmente e o erro é logado.
 
 ## Payloads de referência do enunciado (seção 5)
 
@@ -66,7 +73,7 @@ Os JSON de referência da prova (seção 5) estão em `test/fixtures/` (`meta-cl
 - [x] Parte 1.4 — extensibilidade documentada + ponto único de registro na factory.
 - [x] Parte 1.5 — erros mapeados no controller.
 - [x] Parte 2.1 — PostgreSQL + Prisma + migrations.
-- [x] Parte 2.2 — integração LLM descrita (acima).
+- [x] Parte 2.2 — integração LLM funcional (classificação de intenção + fallback local).
 - [x] Diferencial — testes unitários e de contrato com payloads de referência.
 - [ ] Vídeo de apresentação (até 10 min) — link a incluir pelo candidato antes do envio.
 - [ ] Repositório público no GitHub com commits claros (responsabilidade do candidato).
